@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #ff0049;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* Monaco Editor Theme Overrides */
+.dark .monaco-editor,
+.dark .monaco-editor .margin {
+  background-color: #1f2937 !important;
+}
+
+.dark .monaco-editor .minimap,
+.dark .monaco-editor .minimap-slider {
+  background-color: #1f2937 !important;
+}
+
+.dark .monaco-editor .monaco-editor-background {
+  background-color: #1f2937 !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4b5563;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}

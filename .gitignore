@@ -1,0 +1,57 @@
+# Node modules
+node_modules/
+
+# Archivos de log
+*.log
+
+# Archivos de configuración de entorno
+.env
+.env.local
+.env.*.local
+electron-builder.config.js
+
+# Archivos de compilación
+dist-electron/
+dist-electron
+dist/
+build/
+out/
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Archivos de caché
+.cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de configuración de IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Archivos de dependencias de Electron
+*.asar
+*.exe
+*.dmg
+*.app
+
+# Archivos de pruebas
+coverage/
+*.spec.ts
+*.test.ts
+
+# Archivos de temporales
+tmp/
+temp/
+
+# Archivos de configuración de TypeScript
+*.tsbuildinfo
+
+# Archivos de salida de compilación
+*.js
+*.js.map
+
