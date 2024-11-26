@@ -11,7 +11,6 @@ node_modules/
 electron-builder.config.js
 
 # Archivos de compilación
-dist-electron/
 dist-electron
 dist/
 build/
@@ -54,4 +53,3 @@ temp/
 # Archivos de salida de compilación
 *.js
 *.js.map
-

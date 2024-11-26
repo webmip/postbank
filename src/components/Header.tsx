@@ -8,7 +8,7 @@ import EnvironmentManager from './EnvironmentManager';
 
 export default function Header() {
   const { isDark, toggleTheme } = useTheme();
-  const { clearAllData, environments, activeEnvironment, setActiveEnvironment } = useStore();
+  const { clearAllData, environments, activeEnvironment, setActiveEnvironment, preferences, updatePreferences } = useStore();
   const [isPreferencesOpen, setIsPreferencesOpen] = useState(false);
   const [isEnvironmentOpen, setIsEnvironmentOpen] = useState(false);
 
@@ -56,33 +56,12 @@ export default function Header() {
           </button>
         </div>
 
-        <DropdownMenu.Root>
-          <DropdownMenu.Trigger asChild>
-            <button className="p-1 hover:bg-gray-800 rounded-md transition-colors">
-              <Settings size={20} className="text-gray-400 hover:text-gray-300" />
-            </button>
-          </DropdownMenu.Trigger>
-
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              className="min-w-[220px] bg-white dark:bg-gray-800 rounded-md shadow-lg p-1 z-50"
-              sideOffset={5}
-            >
-              <DropdownMenu.Item
-                className="text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2 rounded-md cursor-pointer outline-none"
-                onSelect={() => setIsEnvironmentOpen(true)}
-              >
-                Environment Variables
-              </DropdownMenu.Item>
-              <DropdownMenu.Item
-                className="text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 px-3 py-2 rounded-md cursor-pointer outline-none"
-                onSelect={() => setIsPreferencesOpen(true)}
-              >
-                Preferences
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        <button
+          onClick={() => setIsPreferencesOpen(true)}
+          className="p-1 hover:bg-gray-800 rounded-md transition-colors"
+        >
+          <Settings size={20} className="text-gray-400 hover:text-gray-300" />
+        </button>
 
         <Dialog.Root open={isPreferencesOpen} onOpenChange={setIsPreferencesOpen}>
           <Dialog.Portal>
@@ -99,6 +78,19 @@ export default function Header() {
                     <p>Version: 1.0.0</p>
                     <p>© 2024 POSTBANK. All rights reserved.</p>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Log Settings</h3>
+                  <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={preferences.enrichLogWithIP}
+                      onChange={(e) => updatePreferences({ enrichLogWithIP: e.target.checked })}
+                      className="rounded border-gray-300 dark:border-gray-600 text-primary focus:ring-primary"
+                    />
+                    Enrich log with IP
+                  </label>
                 </div>
 
                 <div className="space-y-2">

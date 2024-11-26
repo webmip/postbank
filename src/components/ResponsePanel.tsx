@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Code, Layout } from 'lucide-react';
+import { Code, Layout, FileText } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 
 interface ResponsePanelProps {
@@ -7,7 +7,7 @@ interface ResponsePanelProps {
 }
 
 export default function ResponsePanel({ response }: ResponsePanelProps) {
-  const [responseTab, setResponseTab] = useState<'raw' | 'render'>('raw');
+  const [responseTab, setResponseTab] = useState<'raw' | 'render' | 'headers'>('raw');
 
   const isHtmlResponse = (data: any): boolean => {
     if (typeof data === 'string' && data.trim().startsWith('<!DOCTYPE html')) {
@@ -21,6 +21,20 @@ export default function ResponsePanel({ response }: ResponsePanelProps) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const renderHeaders = () => {
+    if (!response?.headers) return null;
+    return (
+      <div className="p-4 space-y-2">
+        {Object.entries(response.headers).map(([key, value]) => (
+          <div key={key} className="flex border-b border-gray-200 dark:border-gray-700 pb-2">
+            <div className="w-1/3 font-medium text-gray-600 dark:text-gray-400">{key}</div>
+            <div className="w-2/3 text-gray-800 dark:text-gray-200 break-all">{value as string}</div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -60,6 +74,17 @@ export default function ResponsePanel({ response }: ResponsePanelProps) {
                 <Layout size={14} />
                 Render
               </button>
+              <button
+                onClick={() => setResponseTab('headers')}
+                className={`px-3 py-1 text-sm flex items-center gap-1 ${
+                  responseTab === 'headers'
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'bg-white text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <FileText size={14} />
+                Headers
+              </button>
             </div>
           </div>
         )}
@@ -73,6 +98,10 @@ export default function ResponsePanel({ response }: ResponsePanelProps) {
             theme="light"
             options={{ readOnly: true, minimap: { enabled: false } }}
           />
+        ) : responseTab === 'headers' ? (
+          <div className="h-[calc(100%-32px)] overflow-auto bg-white dark:bg-gray-800 border rounded-md">
+            {renderHeaders()}
+          </div>
         ) : (
           <div className="h-[calc(100%-32px)] overflow-auto bg-white border rounded-md">
             {isHtmlResponse(response.data) ? (

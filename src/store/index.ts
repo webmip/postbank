@@ -1,31 +1,14 @@
 import { create } from 'zustand';
-import { Collection, Request, RequestHistory, SavedRequest, Environment, Variable } from '../types';
+import { Collection, Request, RequestHistory, SavedRequest, Environment, Variable, Cookie, AppState, RequestLog, UserPreferences } from '../types';
 import { openDB } from 'idb';
-
-interface AppState {
-  collections: Collection[];
-  activeRequest: Request | null;
-  history: RequestHistory[];
-  savedRequests: SavedRequest[];
-  environments: Environment[];
-  activeEnvironment: Environment | null;
-  loadCollections: () => Promise<void>;
-  saveCollection: (collection: Collection) => Promise<void>;
-  deleteCollection: (id: string) => Promise<void>;
-  importPostmanCollection: (json: string) => Promise<void>;
-  setActiveRequest: (request: Request | null) => void;
-  addToHistory: (request: Omit<Request, 'id'>, response: any) => Promise<void>;
-  saveRequest: (name: string, request: Request) => Promise<void>;
-  deleteSavedRequest: (id: string) => Promise<void>;
-  clearAllData: () => Promise<void>;
-  saveEnvironment: (environment: Environment) => Promise<void>;
-  deleteEnvironment: (id: string) => Promise<void>;
-  setActiveEnvironment: (environment: Environment | null) => void;
-  replaceVariables: (text: string) => string;
-}
+import { validatePostmanCollection, processPostmanItems } from '../utils/collectionExporter';
 
 const DB_NAME = 'postbank-db';
-const DB_VERSION = 1;
+const DB_VERSION = 3;
+
+const DEFAULT_PREFERENCES: UserPreferences = {
+  enrichLogWithIP: false
+};
 
 let dbInstance: IDBDatabase | null = null;
 
@@ -34,26 +17,22 @@ const initializeDB = async () => {
 
   try {
     const db = await openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        // Collections store
+      upgrade(db, oldVersion, newVersion, transaction) {
         if (!db.objectStoreNames.contains('collections')) {
           db.createObjectStore('collections', { keyPath: 'id' });
         }
-
-        // History store
         if (!db.objectStoreNames.contains('history')) {
           const historyStore = db.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
           historyStore.createIndex('timestamp', 'timestamp');
         }
-
-        // Saved requests store
         if (!db.objectStoreNames.contains('savedRequests')) {
           db.createObjectStore('savedRequests', { keyPath: 'id' });
         }
-
-        // Environments store
         if (!db.objectStoreNames.contains('environments')) {
           db.createObjectStore('environments', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('cookies')) {
+          db.createObjectStore('cookies', { keyPath: ['domain', 'name'] });
         }
       },
     });
@@ -66,41 +45,6 @@ const initializeDB = async () => {
   }
 };
 
-const validatePostmanCollection = (collection: any): boolean => {
-  return collection?.info?.name && Array.isArray(collection.item);
-};
-
-const processPostmanRequest = (item: any): Request => {
-  const request = item.request;
-  return {
-    id: crypto.randomUUID(),
-    name: item.name,
-    method: request.method as Request['method'],
-    url: request.url.raw || request.url,
-    headers: (request.header || []).reduce((acc: any, h: any) => ({
-      ...acc,
-      [h.key]: { value: h.value, enabled: true },
-    }), {}),
-    body: request.body?.raw || '',
-  };
-};
-
-const processPostmanItems = (items: any[]): Request[] => {
-  const requests: Request[] = [];
-  
-  const processItem = (item: any) => {
-    if (item.request) {
-      requests.push(processPostmanRequest(item));
-    }
-    if (Array.isArray(item.item)) {
-      item.item.forEach(processItem);
-    }
-  };
-  
-  items.forEach(processItem);
-  return requests;
-};
-
 export const useStore = create<AppState>((set, get) => ({
   collections: [],
   activeRequest: null,
@@ -108,29 +52,48 @@ export const useStore = create<AppState>((set, get) => ({
   savedRequests: [],
   environments: [],
   activeEnvironment: null,
+  cookies: {},
+  requestLogs: [],
+  preferences: DEFAULT_PREFERENCES,
 
   loadCollections: async () => {
     try {
       const db = await initializeDB();
-      const tx = db.transaction(['collections', 'history', 'savedRequests', 'environments'], 'readonly');
+      const tx = db.transaction(['collections', 'history', 'savedRequests', 'environments', 'cookies'], 'readonly');
       
-      const [collections, history, savedRequests, environments] = await Promise.all([
+      const [collections, history, savedRequests, environments, cookies] = await Promise.all([
         tx.objectStore('collections').getAll(),
         tx.objectStore('history').index('timestamp').getAll(),
         tx.objectStore('savedRequests').getAll(),
         tx.objectStore('environments').getAll(),
+        tx.objectStore('cookies').getAll(),
       ]);
 
       const activeEnvId = localStorage.getItem('activeEnvironmentId');
       const activeEnvironment = activeEnvId ? environments.find(env => env.id === activeEnvId) || null : null;
+
+      const cookiesByDomain = cookies.reduce((acc, cookie) => {
+        if (!acc[cookie.domain]) {
+          acc[cookie.domain] = [];
+        }
+        acc[cookie.domain].push(cookie);
+        return acc;
+      }, {} as Record<string, Cookie[]>);
+
+      // Load preferences from localStorage
+      const savedPreferences = localStorage.getItem('preferences');
+      const preferences = savedPreferences ? JSON.parse(savedPreferences) : DEFAULT_PREFERENCES;
 
       await tx.done;
       set({ 
         collections, 
         history: history.reverse(), 
         savedRequests, 
-        environments, 
-        activeEnvironment 
+        environments,
+        activeEnvironment,
+        cookies: cookiesByDomain,
+        requestLogs: [],
+        preferences
       });
     } catch (error) {
       console.error('Error loading data:', error);
@@ -138,8 +101,11 @@ export const useStore = create<AppState>((set, get) => ({
         collections: [], 
         history: [], 
         savedRequests: [], 
-        environments: [], 
-        activeEnvironment: null 
+        environments: [],
+        activeEnvironment: null,
+        cookies: {},
+        requestLogs: [],
+        preferences: DEFAULT_PREFERENCES
       });
     }
   },
@@ -230,7 +196,7 @@ export const useStore = create<AppState>((set, get) => ({
   clearAllData: async () => {
     const db = await initializeDB();
     const tx = db.transaction(
-      ['collections', 'history', 'savedRequests', 'environments'],
+      ['collections', 'history', 'savedRequests', 'environments', 'cookies'],
       'readwrite'
     );
 
@@ -238,11 +204,13 @@ export const useStore = create<AppState>((set, get) => ({
       tx.objectStore('collections').clear(),
       tx.objectStore('history').clear(),
       tx.objectStore('savedRequests').clear(),
-      tx.objectStore('environments').clear()
+      tx.objectStore('environments').clear(),
+      tx.objectStore('cookies').clear()
     ]);
 
     await tx.done;
     localStorage.removeItem('activeEnvironmentId');
+    localStorage.removeItem('preferences');
     
     set({
       collections: [],
@@ -250,7 +218,9 @@ export const useStore = create<AppState>((set, get) => ({
       savedRequests: [],
       environments: [],
       activeEnvironment: null,
-      activeRequest: null
+      cookies: {},
+      requestLogs: [],
+      preferences: DEFAULT_PREFERENCES
     });
   },
 
@@ -303,5 +273,67 @@ export const useStore = create<AppState>((set, get) => ({
     });
 
     return result;
+  },
+
+  addCookie: (domain: string, cookie: Cookie) => {
+    set(state => {
+      const newCookies = { ...state.cookies };
+      if (!newCookies[domain]) {
+        newCookies[domain] = [];
+      }
+      
+      // Update existing cookie or add new one
+      const existingIndex = newCookies[domain].findIndex(c => c.name === cookie.name);
+      if (existingIndex >= 0) {
+        newCookies[domain][existingIndex] = cookie;
+      } else {
+        newCookies[domain].push(cookie);
+      }
+
+      return { cookies: newCookies };
+    });
+  },
+
+  removeCookie: (domain: string, name: string) => {
+    set(state => {
+      const newCookies = { ...state.cookies };
+      if (newCookies[domain]) {
+        newCookies[domain] = newCookies[domain].filter(c => c.name !== name);
+        if (newCookies[domain].length === 0) {
+          delete newCookies[domain];
+        }
+      }
+      return { cookies: newCookies };
+    });
+  },
+
+  getCookiesForDomain: (domain: string) => {
+    return get().cookies[domain] || [];
+  },
+
+  addRequestLog: (log: RequestLog) => {
+    set(state => {
+      const newLogs = [log, ...state.requestLogs].slice(0, 3); // Keep only last 3 logs
+      return { requestLogs: newLogs };
+    });
+  },
+
+  getRequestLogs: () => {
+    return get().requestLogs;
+  },
+
+  updatePreferences: (newPreferences: Partial<UserPreferences>) => {
+    set(state => {
+      const preferences = {
+        ...state.preferences,
+        ...newPreferences
+      };
+      localStorage.setItem('preferences', JSON.stringify(preferences));
+      return { preferences };
+    });
+  },
+
+  getPreferences: () => {
+    return get().preferences;
   }
 }));

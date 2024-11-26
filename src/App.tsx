@@ -19,11 +19,11 @@ function App() {
       <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
         <Header />
         <PanelGroup direction="horizontal" className="flex-1 overflow-hidden">
-          <Panel defaultSize={20} minSize={15} maxSize={40}>
+          <Panel defaultSize={25} minSize={20} maxSize={40}>
             <Sidebar />
           </Panel>
           <PanelResizeHandle className="w-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" />
-          <Panel defaultSize={80}>
+          <Panel>
             <RequestPanel />
           </Panel>
         </PanelGroup>

@@ -2,10 +2,8 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const axios = require('axios');
 
-let mainWindow;
-
-const createWindow = () => {
-  mainWindow = new BrowserWindow({
+function createWindow() {
+  const win = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
@@ -13,28 +11,47 @@ const createWindow = () => {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs')
     },
-    icon: path.join(__dirname, '../build/icon.png')
+    show: false
   });
 
   const isDev = process.env.NODE_ENV === 'development';
   
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    win.loadURL('http://localhost:5173');
+    // win.webContents.openDevTools(); // Comentado para evitar que se abran las DevTools
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    win.loadFile(path.join(__dirname, '../dist/index.html'));
   }
-};
 
-ipcMain.handle('make-request', async (_, { method, url, headers, body }) => {
+  win.once('ready-to-show', () => {
+    win.show();
+  });
+
+  // Manejar errores de carga
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription);
+    if (isDev) {
+      // Reintentar la carga en desarrollo
+      setTimeout(() => {
+        console.log('Retrying to connect to dev server...');
+        win.loadURL('http://localhost:5173');
+      }, 1000);
+    }
+  });
+}
+
+ipcMain.handle('make-request', async (_, options) => {
   try {
+    console.log('Making request:', options);
     const startTime = Date.now();
     
     const response = await axios({
-      method: method.toLowerCase(),
-      url,
-      headers,
-      data: method !== 'GET' ? body : undefined,
-      validateStatus: () => true
+      method: options.method,
+      url: options.url,
+      headers: options.headers,
+      data: options.method !== 'GET' ? options.body : undefined,
+      validateStatus: () => true,
+      timeout: 30000 // 30 segundos de timeout
     });
 
     const endTime = Date.now();
@@ -48,26 +65,15 @@ ipcMain.handle('make-request', async (_, { method, url, headers, body }) => {
       size: JSON.stringify(response.data).length
     };
   } catch (error) {
-    console.error('Request error:', error);
-    
-    if (error.response) {
-      return {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        headers: error.response.headers,
-        data: error.response.data,
-        time: 0,
-        size: 0
-      };
-    }
-    
-    return {
-      status: 0,
+    console.error('Request error in main process:', error);
+    throw {
+      status: error.response?.status || 0,
       statusText: error.message || 'Network Error',
-      headers: {},
-      data: {
+      headers: error.response?.headers || {},
+      data: error.response?.data || {
         error: 'Request Error',
-        message: error.message
+        message: error.message,
+        code: error.code
       },
       time: 0,
       size: 0

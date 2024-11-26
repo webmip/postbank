@@ -1,0 +1,212 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "type": "object",
+    "properties": {
+      "info": {
+        "type": "object",
+        "properties": {
+          "_postman_id": {
+            "type": "string",
+            "description": "Every collection is identified by the unique value of this field"
+          },
+          "name": {
+            "type": "string",
+            "description": "A collection's friendly name"
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "A collection's description"
+          },
+          "version": {
+            "type": ["string", "null"],
+            "description": "Collection version"
+          },
+          "schema": {
+            "type": "string",
+            "description": "Schema URL"
+          }
+        },
+        "required": ["name"]
+      },
+      "item": {
+        "type": "array",
+        "description": "Items are the basic unit of a collection",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Item name"
+            },
+            "request": {
+              "type": "object",
+              "properties": {
+                "method": {
+                  "type": "string",
+                  "enum": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+                },
+                "header": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "string"
+                      },
+                      "disabled": {
+                        "type": "boolean"
+                      },
+                      "description": {
+                        "type": ["string", "null"]
+                      }
+                    },
+                    "required": ["key", "value"]
+                  }
+                },
+                "url": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "raw": {
+                          "type": "string"
+                        },
+                        "protocol": {
+                          "type": "string"
+                        },
+                        "host": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "path": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "query": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "value": {
+                                "type": "string"
+                              },
+                              "disabled": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                "body": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "enum": ["raw", "urlencoded", "formdata", "file", "graphql"]
+                    },
+                    "raw": {
+                      "type": "string"
+                    },
+                    "urlencoded": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "disabled": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "formdata": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": ["text", "file"]
+                          },
+                          "disabled": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "required": ["method", "url"]
+            },
+            "response": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "originalRequest": {
+                    "$ref": "#/properties/item/items/properties/request"
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "integer"
+                  },
+                  "header": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "body": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": ["info", "item"]
+  }
